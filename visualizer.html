@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Password Cracking Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg2: #0f1520;
+    --panel: #111927;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --warn: #ffd700;
+    --red: #ff3860;
+    --text: #c8d8e8;
+    --muted: #5a7a9a;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-head: 'Rajdhani', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ────────────────────────────────── */
+  .app { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #003366, #001133);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .header-title { font-family: var(--font-head); font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: 2px; }
+  .header-sub { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--muted);
+    transition: all .15s;
+    text-transform: uppercase;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--accent); }
+  .tab.active { background: #003366; border-color: var(--accent); color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Grids ─────────────────────────────────── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media(max-width: 700px) { .grid2 { grid-template-columns: 1fr; } .grid3 { grid-template-columns: 1fr; } }
+
+  /* ── Cards ─────────────────────────────────── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .stat-card { text-align: center; padding: 14px 10px; }
+  .stat-val { font-size: 22px; font-weight: 700; color: var(--accent3); font-family: var(--font-head); }
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 4px; text-transform: uppercase; }
+
+  /* ── Form Controls ─────────────────────────── */
+  label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  input[type=text], input[type=password], select {
+    width: 100%;
+    background: #060c14;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type=text]:focus, input[type=password]:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--bg); }
+
+  .row { display: flex; gap: 10px; align-items: flex-end; }
+  .row > div { flex: 1; }
+
+  /* ── Buttons ────────────────────────────────── */
+  .btn {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: #003366; }
+  .btn:active { transform: scale(0.97); }
+  .btn.danger { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: #2a0010; }
+  .btn.success { border-color: var(--accent3); color: var(--accent3); }
+  .btn.success:hover { background: #001a00; }
+
+  /* ── Terminal Output ─────────────────────────── */
+  .terminal {
+    background: #050a10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .t-info  { color: var(--accent); }
+  .t-ok    { color: var(--accent3); }
+  .t-err   { color: var(--red); }
+  .t-warn  { color: var(--warn); }
+  .t-muted { color: var(--muted); }
+
+  /* ── Hash Display ─────────────────────────────── */
+  .hash-row {
+    display: flex; gap: 10px; align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #0d1e30;
+  }
+  .hash-algo { color: var(--warn); width: 62px; flex-shrink: 0; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .hash-val  { color: var(--accent3); font-size: 11px; word-break: break-all; flex: 1; }
+
+  /* ── Progress bar ─────────────────────────────── */
+  .progress-wrap { background: #0d1e30; border-radius: 4px; height: 6px; overflow: hidden; margin: 10px 0; }
+  .progress-bar  { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+
+  /* ── Strength Meter ───────────────────────────── */
+  .strength-bars { display: flex; gap: 3px; margin-top: 6px; }
+  .s-bar { flex: 1; height: 6px; border-radius: 2px; background: var(--border); transition: background .3s; }
+  .s-bar.s1 { background: var(--red); }
+  .s-bar.s2 { background: var(--accent2); }
+  .s-bar.s3 { background: var(--warn); }
+  .s-bar.s4 { background: #88ff44; }
+  .s-bar.s5 { background: var(--accent3); }
+
+  /* ── Complexity Table ─────────────────────────── */
+  .ct { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ct th { color: var(--accent); font-family: var(--font-head); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; font-weight: 600; }
+  .ct td { padding: 5px 10px; border-bottom: 1px solid #0d1e30; }
+  .ct tr:last-child td { border-bottom: none; }
+  .ct .easy { color: var(--red); }
+  .ct .medium { color: var(--warn); }
+  .ct .hard { color: var(--accent3); }
+  .ct .impossible { color: var(--muted); }
+
+  /* ── Attack Viz ───────────────────────────────── */
+  .attack-viz { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .av-item {
+    flex: 1; min-width: 120px;
+    background: #060c14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .av-item.active { border-color: var(--accent); }
+  .av-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .av-val   { font-size: 18px; font-weight: 700; color: var(--accent); margin: 4px 0; font-family: var(--font-head); }
+
+  /* ── Badge ─────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .badge-green { background: #001a00; color: var(--accent3); border: 1px solid var(--accent3); }
+  .badge-red   { background: #2a0010; color: var(--red);    border: 1px solid var(--red); }
+  .badge-blue  { background: #003366; color: var(--accent);  border: 1px solid var(--accent); }
+
+  /* ── Scan Line Effect ─────────────────────────── */
+  .scanline {
+    pointer-events: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,.015) 2px, rgba(0,212,255,.015) 4px);
+  }
+
+  /* ── Cursor blink ─────────────────────────────── */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor { display: inline-block; width: 7px; height: 14px; background: var(--accent); margin-left: 2px; animation: blink 1s step-end infinite; vertical-align: middle; }
+
+  .section-gap { margin-top: 20px; }
+  .tip { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🔐</div>
+    <div>
+      <div class="header-title">PASSWORD CRACKING SIMULATOR</div>
+      <div class="header-sub">EDUCATIONAL CYBERSECURITY LAB · FOR LEARNING PURPOSES ONLY</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('hash')">Hash Lab</div>
+    <div class="tab" onclick="switchTab('brute')">Brute Force</div>
+    <div class="tab" onclick="switchTab('dict')">Dictionary</div>
+    <div class="tab" onclick="switchTab('complexity')">Complexity</div>
+    <div class="tab" onclick="switchTab('strength')">Strength Meter</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 1: HASH LAB
+  ══════════════════════════════════════════════ -->
+  <div class="panel active" id="tab-hash">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">Hash a Password</div>
+          <label>Plaintext Password</label>
+          <input type="text" id="hash-input" placeholder="Enter any password..." oninput="computeHashes()">
+          <div class="section-gap"></div>
+          <label>Salt (optional)</label>
+          <div class="row">
+            <div><input type="text" id="hash-salt" placeholder="e.g. RANDOM_SALT_XY2" oninput="computeHashes()"></div>
+            <button class="btn" onclick="randomSalt()">Rnd</button>
+          </div>
+          <div class="tip">Salt is appended before hashing to prevent rainbow table attacks.</div>
+
+          <div style="margin-top:16px" id="hash-results">
+            <div style="color:var(--muted);font-size:12px">Enter a password to see its hashes...</div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+          <div class="card-title">Hash Collision Demo</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Same password → same hash. Different passwords → different hashes.</div>
+          <div class="row">
+            <div>
+              <label>Password A</label>
+              <input type="text" id="col-a" placeholder="hello" value="hello" oninput="colDemo()">
+            </div>
+            <div>
+              <label>Password B</label>
+              <input type="text" id="col-b" placeholder="Hello" value="Hello" oninput="colDemo()">
+            </div>
+          </div>
+          <div id="col-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="height:100%">
+          <div class="card-title">Terminal Output</div>
+          <div class="terminal" id="hash-terminal">
+<span class="t-info">> PASSWORD HASHING LAB INITIALIZED</span>
+<span class="t-muted">> Type a password on the left to see all hash outputs.</span>
+<span class="t-muted">> Add a salt to see how it changes the digest.</span>
+<span class="t-muted">──────────────────────────────────────</span>
+<span class="t-warn">> Supported algorithms: MD5, SHA-1, SHA-256, SHA-512</span>
+<span class="t-muted">> Note: MD5 and SHA-1 are BROKEN for security purposes.</span>
+<span class="t-muted">> Use SHA-256 minimum for any real application.</span>
+<span class="t-ok">READY <span class="cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 2: BRUTE FORCE
+  ══════════════════════════════════════════════ -->
+  <div class="panel" id="tab-brute">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">Brute Force Attack</div>
+          <label>Target Password (to crack)</label>
+          <input type="text" id="bf-target" placeholder="e.g. ab3" value="ab" maxlength="5">
+          <div class="tip">Keep it short (≤4 chars) — brute force is exponential.</div>
+          <div class="section-gap"></div>
+          <label>Hash Algorithm</label>
+          <select id="bf-algo">
+            <option value="SHA-256">SHA-256</option>
+            <option value="SHA-1">SHA-1</option>
+            <option value="MD5">MD5</option>
+          </select>
+          <div class="section-gap"></div>
+          <label>Character Set</label>
+          <select id="bf-charset">
+            <option value="digits">Digits only (0-9) — 10 chars</option>
+            <option value="lower" selected>Lowercase (a-z) — 26 chars</option>
+            <option value="lower_digits">Lowercase + Digits — 36 chars</option>
+            <option value="alpha">Upper + Lower — 52 chars</option>
+          </select>
+          <div class="section-gap"></div>
+          <label>Max Password Length</label>
+          <select id="bf-maxlen">
+            <option value="2">2 characters</option>
+            <option value="3" selected>3 characters</option>
+            <option value="4">4 characters</option>
+          </select>
+          <div class="section-gap"></div>
+          <div class="row" style="gap:8px">
+            <button class="btn success" onclick="runBruteForce()">▶ LAUNCH ATTACK</button>
+            <button class="btn danger" onclick="stopAttack('bf')">■ STOP</button>
+          </div>
+          <div class="section-gap"></div>
+          <div id="bf-stats" class="grid3" style="gap:8px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="height:100%">
+          <div class="card-title">Attack Terminal</div>
+          <div class="progress-wrap"><div class="progress-bar" id="bf-progress" style="width:0%"></div></div>
+          <div class="terminal" id="bf-terminal">
+<span class="t-info">> BRUTE FORCE MODULE LOADED</span>
+<span class="t-muted">> Attack type: Exhaustive search</span>
+<span class="t-muted">> Time complexity: O(|Σ|ⁿ) — exponential</span>
+<span class="t-muted">> Configure target on the left, then launch.</span>
+<span class="t-ok">STANDING BY <span class="cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 3: DICTIONARY ATTACK
+  ══════════════════════════════════════════════ -->
+  <div class="panel" id="tab-dict">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">Dictionary Attack</div>
+          <label>Target Password (to crack)</label>
+          <input type="text" id="dict-target" placeholder="e.g. password1" value="password1">
+          <div class="tip">Try common passwords like: admin, dragon, monkey1, letmein, qwerty!</div>
+          <div class="section-gap"></div>
+          <label>Hash Algorithm</label>
+          <select id="dict-algo">
+            <option value="SHA-256">SHA-256</option>
+            <option value="SHA-1">SHA-1</option>
+            <option value="MD5">MD5</option>
+          </select>
+          <div class="section-gap"></div>
+          <label>Mutation Rules</label>
+          <select id="dict-mutations">
+            <option value="full">Full mutations (append digits, symbols, leet-speak)</option>
+            <option value="none">Base words only</option>
+          </select>
+          <div class="section-gap"></div>
+          <div class="row" style="gap:8px">
+            <button class="btn success" onclick="runDictAttack()">▶ LAUNCH ATTACK</button>
+            <button class="btn danger" onclick="stopAttack('dict')">■ STOP</button>
+          </div>
+          <div class="section-gap"></div>
+          <div id="dict-stats" class="grid3" style="gap:8px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="height:100%">
+          <div class="card-title">Attack Terminal</div>
+          <div class="progress-wrap"><div class="progress-bar" id="dict-progress" style="width:0%"></div></div>
+          <div class="terminal" id="dict-terminal">
+<span class="t-info">> DICTIONARY ATTACK MODULE LOADED</span>
+<span class="t-muted">> Uses top-100 common passwords</span>
+<span class="t-muted">> + case mutations + digit appends</span>
+<span class="t-muted">> + leet-speak substitutions</span>
+<span class="t-muted">> Time complexity: O(W × M) — linear</span>
+<span class="t-ok">STANDING BY <span class="cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 4: COMPLEXITY
+  ══════════════════════════════════════════════ -->
+  <div class="panel" id="tab-complexity">
+    <div class="card">
+      <div class="card-title">Time Complexity Analysis</div>
+      <div class="grid2" style="gap:16px">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Theoretical worst-case time to crack by brute force at 1M hashes/sec (software)</div>
+          <table class="ct">
+            <tr><th>Charset</th><th>Size</th><th>4 chars</th><th>6 chars</th><th>8 chars</th><th>10 chars</th></tr>
+          </table>
+          <div id="complexity-table"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Big-O Summary</div>
+          <div class="card" style="background:#060c14">
+            <div class="hash-row"><div class="hash-algo">BRUTE</div><div class="hash-val t-warn">O(|Σ|ⁿ) — exponential in length n</div></div>
+            <div class="hash-row"><div class="hash-algo">DICT</div><div class="hash-val t-warn">O(W × M) — linear in words × mutations</div></div>
+            <div class="hash-row"><div class="hash-algo">RAINBOW</div><div class="hash-val t-ok">O(1) lookup (space-time tradeoff)</div></div>
+            <div class="hash-row"><div class="hash-algo">SALTED</div><div class="hash-val t-info">Defeats rainbow tables → O(|Σ|ⁿ)</div></div>
+            <div class="hash-row"><div class="hash-algo">BCRYPT</div><div class="hash-val t-ok">Designed slow — 1000× harder than SHA</div></div>
+          </div>
+          <div class="card section-gap" style="background:#060c14">
+            <div class="card-title" style="font-size:12px">Defence Recommendations</div>
+            <div style="font-size:12px;line-height:1.8">
+              <span class="t-ok">✓</span> Use Argon2id / bcrypt / scrypt (slow hashes)<br>
+              <span class="t-ok">✓</span> Minimum 12 characters<br>
+              <span class="t-ok">✓</span> Mix uppercase, lowercase, digits, symbols<br>
+              <span class="t-ok">✓</span> Always use unique salts per password<br>
+              <span class="t-ok">✓</span> Implement rate limiting + lockout<br>
+              <span class="t-err">✗</span> Never store plaintext passwords<br>
+              <span class="t-err">✗</span> Avoid MD5/SHA-1 for password storage
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section-gap">
+      <div class="card-title">Interactive Complexity Calculator</div>
+      <div class="grid2">
+        <div>
+          <label>Charset Size (|Σ|)</label>
+          <select id="calc-charset" onchange="calcComplexity()">
+            <option value="10">10 — digits only</option>
+            <option value="26">26 — lowercase</option>
+            <option value="36" selected>36 — lower + digits</option>
+            <option value="62">62 — alphanumeric</option>
+            <option value="95">95 — full ASCII printable</option>
+          </select>
+          <div class="section-gap"></div>
+          <label>Password Length (n)</label>
+          <select id="calc-length" onchange="calcComplexity()">
+            <option value="4">4</option><option value="6">6</option>
+            <option value="8" selected>8</option><option value="10">10</option>
+            <option value="12">12</option><option value="16">16</option>
+          </select>
+          <div class="section-gap"></div>
+          <label>Attacker Speed (hashes/sec)</label>
+          <select id="calc-speed" onchange="calcComplexity()">
+            <option value="1000000">1M — Software (CPU)</option>
+            <option value="1000000000">1B — Dedicated GPU</option>
+            <option value="100000000000">100B — GPU Cluster</option>
+          </select>
+        </div>
+        <div id="calc-results" class="grid2" style="gap:10px;align-content:start"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 5: PASSWORD STRENGTH METER
+  ══════════════════════════════════════════════ -->
+  <div class="panel" id="tab-strength">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">Password Strength Analyser</div>
+          <label>Enter a Password</label>
+          <input type="text" id="str-input" placeholder="Test any password..." oninput="analyseStrength()">
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Strength</span>
+              <span id="str-label" style="font-size:11px;font-weight:700;letter-spacing:1px"></span>
+            </div>
+            <div class="strength-bars">
+              <div class="s-bar" id="sb1"></div>
+              <div class="s-bar" id="sb2"></div>
+              <div class="s-bar" id="sb3"></div>
+              <div class="s-bar" id="sb4"></div>
+              <div class="s-bar" id="sb5"></div>
+            </div>
+          </div>
+          <div class="section-gap"></div>
+          <div id="str-checks" style="font-size:12px;line-height:1.8"></div>
+        </div>
+        <div class="card section-gap">
+          <div class="card-title">Estimated Crack Time</div>
+          <div id="str-cracktime" style="font-size:13px;line-height:1.8;color:var(--muted)">Enter a password above...</div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="height:100%">
+          <div class="card-title">Entropy Analysis</div>
+          <div id="entropy-display" style="color:var(--muted);font-size:12px">Enter a password to see entropy breakdown...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── Web Crypto Helpers ─────────────────────────────────────────────────────
+async function sha256(msg) {
+  const msgBuf = new TextEncoder().encode(msg);
+  const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function sha1(msg) {
+  const msgBuf = new TextEncoder().encode(msg);
+  const hashBuf = await crypto.subtle.digest('SHA-1', msgBuf);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// Simple MD5 implementation
+function md5(input) {
+  function safeAdd(x,y){const lsw=(x&0xFFFF)+(y&0xFFFF);const msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xFFFF);}
+  function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt));}
+  function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b);}
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+  const str = unescape(encodeURIComponent(input));
+  const x=[];for(let i=0;i<str.length;i+=4){x.push((str.charCodeAt(i))|(str.charCodeAt(i+1)<<8)|(str.charCodeAt(i+2)<<16)|(str.charCodeAt(i+3)<<24));}
+  const strLen=str.length*8;x[strLen>>5]|=0x80<<(strLen%32);x[((strLen+64>>>9)<<4)+14]=strLen;
+  let a=0x67452301,b=0xEFCDAB89,c=0x98BADCFE,d=0x10325476;
+  for(let i=0;i<x.length;i+=16){const oa=a,ob=b,oc=c,od=d;
+  a=md5ff(a,b,c,d,x[i],7,-680876936);d=md5ff(d,a,b,c,x[i+1],12,-389564586);c=md5ff(c,d,a,b,x[i+2],17,606105819);b=md5ff(b,c,d,a,x[i+3],22,-1044525330);
+  a=md5ff(a,b,c,d,x[i+4],7,-176418897);d=md5ff(d,a,b,c,x[i+5],12,1200080426);c=md5ff(c,d,a,b,x[i+6],17,-1473231341);b=md5ff(b,c,d,a,x[i+7],22,-45705983);
+  a=md5ff(a,b,c,d,x[i+8],7,1770035416);d=md5ff(d,a,b,c,x[i+9],12,-1958414417);c=md5ff(c,d,a,b,x[i+10],17,-42063);b=md5ff(b,c,d,a,x[i+11],22,-1990404162);
+  a=md5ff(a,b,c,d,x[i+12],7,1804603682);d=md5ff(d,a,b,c,x[i+13],12,-40341101);c=md5ff(c,d,a,b,x[i+14],17,-1502002290);b=md5ff(b,c,d,a,x[i+15],22,1236535329);
+  a=md5gg(a,b,c,d,x[i+1],5,-165796510);d=md5gg(d,a,b,c,x[i+6],9,-1069501632);c=md5gg(c,d,a,b,x[i+11],14,643717713);b=md5gg(b,c,d,a,x[i],20,-373897302);
+  a=md5gg(a,b,c,d,x[i+5],5,-701558691);d=md5gg(d,a,b,c,x[i+10],9,38016083);c=md5gg(c,d,a,b,x[i+15],14,-660478335);b=md5gg(b,c,d,a,x[i+4],20,-405537848);
+  a=md5gg(a,b,c,d,x[i+9],5,568446438);d=md5gg(d,a,b,c,x[i+14],9,-1019803690);c=md5gg(c,d,a,b,x[i+3],14,-187363961);b=md5gg(b,c,d,a,x[i+8],20,1163531501);
+  a=md5gg(a,b,c,d,x[i+13],5,-1444681467);d=md5gg(d,a,b,c,x[i+2],9,-51403784);c=md5gg(c,d,a,b,x[i+7],14,1735328473);b=md5gg(b,c,d,a,x[i+12],20,-1926607734);
+  a=md5hh(a,b,c,d,x[i+5],4,-378558);d=md5hh(d,a,b,c,x[i+8],11,-2022574463);c=md5hh(c,d,a,b,x[i+11],16,1839030562);b=md5hh(b,c,d,a,x[i+14],23,-35309556);
+  a=md5hh(a,b,c,d,x[i+1],4,-1530992060);d=md5hh(d,a,b,c,x[i+4],11,1272893353);c=md5hh(c,d,a,b,x[i+7],16,-155497632);b=md5hh(b,c,d,a,x[i+10],23,-1094730640);
+  a=md5hh(a,b,c,d,x[i+13],4,681279174);d=md5hh(d,a,b,c,x[i],11,-358537222);c=md5hh(c,d,a,b,x[i+3],16,-722521979);b=md5hh(b,c,d,a,x[i+6],23,76029189);
+  a=md5hh(a,b,c,d,x[i+9],4,-640364487);d=md5hh(d,a,b,c,x[i+12],11,-421815835);c=md5hh(c,d,a,b,x[i+15],16,530742520);b=md5hh(b,c,d,a,x[i+2],23,-995338651);
+  a=md5ii(a,b,c,d,x[i],6,-198630844);d=md5ii(d,a,b,c,x[i+7],10,1126891415);c=md5ii(c,d,a,b,x[i+14],15,-1416354905);b=md5ii(b,c,d,a,x[i+5],21,-57434055);
+  a=md5ii(a,b,c,d,x[i+12],6,1700485571);d=md5ii(d,a,b,c,x[i+3],10,-1894986606);c=md5ii(c,d,a,b,x[i+10],15,-1051523);b=md5ii(b,c,d,a,x[i+1],21,-2054922799);
+  a=md5ii(a,b,c,d,x[i+8],6,1873313359);d=md5ii(d,a,b,c,x[i+15],10,-30611744);c=md5ii(c,d,a,b,x[i+6],15,-1560198380);b=md5ii(b,c,d,a,x[i+13],21,1309151649);
+  a=md5ii(a,b,c,d,x[i+4],6,-145523070);d=md5ii(d,a,b,c,x[i+11],10,-1120210379);c=md5ii(c,d,a,b,x[i+2],15,718787259);b=md5ii(b,c,d,a,x[i+9],21,-343485551);
+  a=safeAdd(a,oa);b=safeAdd(b,ob);c=safeAdd(c,oc);d=safeAdd(d,od);}
+  function int32ToHex(n){return('0000000'+(n>>>0).toString(16)).slice(-8).match(/.{2}/g).map(b=>[b[1],b[0]].join('')).join('');}
+  return[a,b,c,d].map(int32ToHex).join('');
+}
+
+async function hashAny(text, algo) {
+  if (algo === 'MD5') return md5(text);
+  if (algo === 'SHA-1') return await sha1(text);
+  return await sha256(text);
+}
+
+// ── Tab Switching ─────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'complexity') buildComplexityTable();
+  if (id === 'complexity') calcComplexity();
+}
+
+// ── Hash Lab ──────────────────────────────────────────────────────────────
+const ALGOS = ['MD5','SHA-1','SHA-256'];
+
+async function computeHashes() {
+  const pwd = document.getElementById('hash-input').value;
+  const salt = document.getElementById('hash-salt').value;
+  const container = document.getElementById('hash-results');
+  const term = document.getElementById('hash-terminal');
+
+  if (!pwd) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:12px">Enter a password to see its hashes...</div>';
+    return;
+  }
+
+  const input = salt + pwd;
+  let html = '';
+  let termLines = `<span class="t-info">> HASHING: '${salt ? salt+'[SALT]+' : ''}${pwd.length > 20 ? pwd.slice(0,20)+'...' : pwd}'</span>\n`;
+  termLines += salt ? `<span class="t-muted">> Salt applied: '${salt}'</span>\n` : '';
+  termLines += `<span class="t-muted">> ─────────────────────────────────────</span>\n`;
+
+  for (const algo of ALGOS) {
+    const h = await hashAny(input, algo);
+    html += `<div class="hash-row"><div class="hash-algo">${algo}</div><div class="hash-val">${h}</div></div>`;
+    termLines += `<span class="t-warn">${algo.padEnd(8)}</span> <span class="t-ok">${h.slice(0,32)}</span><span class="t-muted">${h.slice(32)}</span>\n`;
+  }
+  termLines += `<span class="t-ok">DONE ✓ <span class="cursor"></span></span>`;
+
+  container.innerHTML = html;
+  term.innerHTML = termLines;
+  term.scrollTop = term.scrollHeight;
+}
+
+function randomSalt() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < 12; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('hash-salt').value = s;
+  computeHashes();
+}
+
+async function colDemo() {
+  const a = document.getElementById('col-a').value;
+  const b = document.getElementById('col-b').value;
+  if (!a || !b) return;
+  const ha = await sha256(a), hb = await sha256(b);
+  const match = ha === hb;
+  const color = match ? 'var(--accent3)' : 'var(--red)';
+  document.getElementById('col-result').innerHTML =
+    `<div class="hash-row"><div class="hash-algo">'${a}'</div><div class="hash-val">${ha.slice(0,20)}...</div></div>` +
+    `<div class="hash-row"><div class="hash-algo">'${b}'</div><div class="hash-val">${hb.slice(0,20)}...</div></div>` +
+    `<div style="margin-top:8px;font-size:12px;color:${color}">${match ? '✓ IDENTICAL HASH (same password)' : '✗ DIFFERENT HASHES (different passwords)'}</div>`;
+}
+colDemo();
+
+// ── Wordlist ──────────────────────────────────────────────────────────────
+const WORDLIST = ["password","123456","password123","admin","letmein","qwerty","abc123","monkey","master","dragon","111111","baseball","iloveyou","trustno1","sunshine","princess","welcome","shadow","superman","michael","batman","passw0rd","696969","ashley","mustang","access","hello","charlie","donald","football","jennifer","ninja","ginger","joshua","pepper","thomas","tigger","soccer","computer","starwars","matrix","jesus","hockey","ranger","hunter","george","jordan","harley","dakota","buster","cheese","cowboy","amanda","andrew","robert","flower","summer","joseph","bailey","jessica","william","daniel","zxcvbn","austin","thunder","taylor","wizard","hammer","silver","guitar","online","killer","gators","magnum","winter","boomer","yankee","justin","diablo","viking","hotdog","gandalf","coffee","purple","random","qazwsx","1q2w3e","pass","love","money","test","game","play","king","rock","fire","blue"];
+
+function buildMutations(words) {
+  const LEET = {'a':'4','e':'3','i':'1','o':'0','s':'$','t':'+'};
+  const out = [];
+  const seen = new Set();
+  const add = w => { if (!seen.has(w)) { seen.add(w); out.push(w); } };
+  for (const w of words) {
+    add(w); add(w.toUpperCase()); add(w[0].toUpperCase()+w.slice(1)); add(w.split('').reverse().join(''));
+    add(w.split('').map(c => LEET[c]||c).join(''));
+    for (let d=0;d<10;d++) { add(w+d); add(d+w); }
+    for (const s of ['!','@','#','$','123','!!']) { add(w+s); add(s+w); }
+  }
+  return out;
+}
+
+// ── Stop flags ────────────────────────────────────────────────────────────
+let stopFlags = { bf: false, dict: false };
+function stopAttack(type) { stopFlags[type] = true; }
+
+// ── Brute Force ───────────────────────────────────────────────────────────
+const CHARSETS = {
+  digits: '0123456789',
+  lower: 'abcdefghijklmnopqrstuvwxyz',
+  lower_digits: 'abcdefghijklmnopqrstuvwxyz0123456789',
+  alpha: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+};
+
+async function runBruteForce() {
+  stopFlags.bf = false;
+  const target = document.getElementById('bf-target').value.trim();
+  const algo = document.getElementById('bf-algo').value;
+  const csKey = document.getElementById('bf-charset').value;
+  const maxLen = parseInt(document.getElementById('bf-maxlen').value);
+  const charset = CHARSETS[csKey];
+  const term = document.getElementById('bf-terminal');
+  const prog = document.getElementById('bf-progress');
+
+  if (!target) { term.innerHTML = '<span class="t-err">> ERROR: No target set.</span>'; return; }
+
+  const targetHash = await hashAny(target, algo);
+  const totalCombos = Array.from({length: maxLen}, (_,i) => Math.pow(charset.length, i+1)).reduce((a,b)=>a+b, 0);
+
+  term.innerHTML = `<span class="t-info">> BRUTE FORCE INITIATED</span>\n<span class="t-muted">> Target hash: ${targetHash.slice(0,24)}...</span>\n<span class="t-muted">> Charset: ${charset.length} chars | Max len: ${maxLen} | Space: ${totalCombos.toLocaleString()}</span>\n<span class="t-warn">> SCANNING...<br></span>`;
+
+  const startTime = performance.now();
+  let attempts = 0;
+  let found = false;
+
+  const tryCandidate = async (candidate) => {
+    const h = await hashAny(candidate, algo);
+    attempts++;
+    const pct = Math.min((attempts / totalCombos) * 100, 99.9);
+    prog.style.width = pct + '%';
+
+    if (attempts % 200 === 0) {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const speed = Math.round(attempts / elapsed);
+      term.innerHTML = `<span class="t-info">> BRUTE FORCE SCANNING...</span>\n<span class="t-muted">> Attempts: ${attempts.toLocaleString()} | Speed: ${speed.toLocaleString()} h/s</span>\n<span class="t-warn">> Current: '${candidate}'</span>\n<span class="t-muted">> Elapsed: ${elapsed.toFixed(2)}s</span>`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    return h === targetHash;
+  };
+
+  // Iterative combination generator
+  outer:
+  for (let len = 1; len <= maxLen; len++) {
+    const indices = new Array(len).fill(0);
+    while (true) {
+      if (stopFlags.bf) {
+        term.innerHTML += `\n<span class="t-err">> ATTACK STOPPED BY USER</span>`;
+        break outer;
+      }
+      const candidate = indices.map(i => charset[i]).join('');
+      if (await tryCandidate(candidate)) {
+        found = true;
+        const elapsed = (performance.now() - startTime) / 1000;
+        prog.style.width = '100%';
+        term.innerHTML = `<span class="t-ok">> ████████████████████ CRACKED! ████████████████████</span>\n<span class="t-ok">> Password: '${candidate}'</span>\n<span class="t-muted">> Hash: ${targetHash.slice(0,32)}...</span>\n<span class="t-muted">> Attempts: ${attempts.toLocaleString()}</span>\n<span class="t-muted">> Time: ${elapsed.toFixed(4)}s</span>\n<span class="t-muted">> Speed: ${Math.round(attempts/elapsed).toLocaleString()} h/s</span>\n<span class="t-info">> Complexity: O(${charset.length}^${len}) = O(${Math.pow(charset.length,len).toLocaleString()})</span>`;
+        showStats('bf', attempts, elapsed, Math.round(attempts/elapsed), true, candidate);
+        break outer;
+      }
+      // Increment indices
+      let pos = len - 1;
+      while (pos >= 0 && ++indices[pos] >= charset.length) { indices[pos] = 0; pos--; }
+      if (pos < 0) break;
+    }
+  }
+
+  if (!found && !stopFlags.bf) {
+    const elapsed = (performance.now() - startTime) / 1000;
+    term.innerHTML += `\n<span class="t-err">> NOT FOUND in search space.</span>\n<span class="t-muted">> Attempts: ${attempts.toLocaleString()} | Time: ${elapsed.toFixed(2)}s</span>`;
+    showStats('bf', attempts, elapsed, Math.round(attempts/elapsed), false, null);
+  }
+}
+
+// ── Dictionary Attack ─────────────────────────────────────────────────────
+async function runDictAttack() {
+  stopFlags.dict = false;
+  const target = document.getElementById('dict-target').value.trim();
+  const algo = document.getElementById('dict-algo').value;
+  const mutations = document.getElementById('dict-mutations').value;
+  const term = document.getElementById('dict-terminal');
+  const prog = document.getElementById('dict-progress');
+
+  if (!target) { term.innerHTML = '<span class="t-err">> ERROR: No target set.</span>'; return; }
+
+  const candidates = mutations === 'full' ? buildMutations(WORDLIST) : [...WORDLIST];
+  const targetHash = await hashAny(target, algo);
+
+  term.innerHTML = `<span class="t-info">> DICTIONARY ATTACK INITIATED</span>\n<span class="t-muted">> Target hash: ${targetHash.slice(0,24)}...</span>\n<span class="t-muted">> Wordlist: ${WORDLIST.length} words | Candidates: ${candidates.length.toLocaleString()}</span>\n<span class="t-warn">> SCANNING...</span>`;
+
+  const startTime = performance.now();
+  let attempts = 0;
+  let found = false;
+
+  for (const candidate of candidates) {
+    if (stopFlags.dict) {
+      term.innerHTML += `\n<span class="t-err">> ATTACK STOPPED BY USER</span>`;
+      break;
+    }
+    const h = await hashAny(candidate, algo);
+    attempts++;
+    prog.style.width = Math.min((attempts / candidates.length) * 100, 99.9) + '%';
+
+    if (h === targetHash) {
+      found = true;
+      const elapsed = (performance.now() - startTime) / 1000;
+      prog.style.width = '100%';
+      term.innerHTML = `<span class="t-ok">> ████████████████████ CRACKED! ████████████████████</span>\n<span class="t-ok">> Password: '${candidate}'</span>\n<span class="t-muted">> Hash: ${targetHash.slice(0,32)}...</span>\n<span class="t-muted">> Attempts: ${attempts.toLocaleString()} / ${candidates.length.toLocaleString()}</span>\n<span class="t-muted">> Time: ${elapsed.toFixed(4)}s</span>\n<span class="t-muted">> Speed: ${Math.round(attempts/elapsed).toLocaleString()} h/s</span>\n<span class="t-info">> O(W×M) — found at word ${attempts} of ${candidates.length.toLocaleString()}</span>`;
+      showStats('dict', attempts, elapsed, Math.round(attempts/elapsed), true, candidate);
+      break;
+    }
+    if (attempts % 500 === 0) {
+      const elapsed = (performance.now() - startTime) / 1000;
+      term.innerHTML = `<span class="t-info">> DICTIONARY SCANNING...</span>\n<span class="t-muted">> ${attempts.toLocaleString()} / ${candidates.length.toLocaleString()} | Current: '${candidate}'</span>`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  if (!found && !stopFlags.dict) {
+    const elapsed = (performance.now() - startTime) / 1000;
+    term.innerHTML += `\n<span class="t-err">> NOT FOUND in dictionary.</span>\n<span class="t-muted">> Attempts: ${attempts.toLocaleString()} | Time: ${elapsed.toFixed(2)}s</span>`;
+    showStats('dict', attempts, elapsed, Math.round(attempts/elapsed), false, null);
+  }
+}
+
+function showStats(type, attempts, time, speed, found, password) {
+  const el = document.getElementById(type+'-stats');
+  el.innerHTML = `
+    <div class="stat-card card"><div class="stat-val">${attempts.toLocaleString()}</div><div class="stat-label">Attempts</div></div>
+    <div class="stat-card card"><div class="stat-val">${time.toFixed(2)}s</div><div class="stat-label">Time</div></div>
+    <div class="stat-card card"><div class="stat-val" style="color:${found?'var(--accent3)':'var(--red)'}">${found?'CRACKED':'FAILED'}</div><div class="stat-label">Result</div></div>`;
+}
+
+// ── Complexity Table ───────────────────────────────────────────────────────
+function humanTime(secs) {
+  if (secs < 0.001) return '<1ms';
+  if (secs < 1) return secs.toFixed(3)+'s';
+  if (secs < 60) return secs.toFixed(1)+'s';
+  if (secs < 3600) return (secs/60).toFixed(1)+'m';
+  if (secs < 86400) return (secs/3600).toFixed(1)+'h';
+  if (secs < 31536000) return (secs/86400).toFixed(1)+'d';
+  const y = secs/31536000;
+  if (y > 1e12) return '>10^12 yrs';
+  if (y > 1e6) return y.toExponential(1)+' yrs';
+  return y.toFixed(0)+' yrs';
+}
+function timeClass(secs) {
+  if (secs < 1) return 'easy';
+  if (secs < 3600) return 'medium';
+  if (secs < 31536000) return 'hard';
+  return 'impossible';
+}
+
+function buildComplexityTable() {
+  const charsets = [[10,'Digits (0-9)'],[26,'Lowercase a-z'],[36,'Lower+Digits'],[62,'Alphanumeric'],[95,'Full ASCII']];
+  const lengths = [4,6,8,10];
+  const RATE = 1_000_000;
+  let html = '<table class="ct"><tr><th>Charset</th>';
+  lengths.forEach(l => html += `<th>${l} chars</th>`);
+  html += '</tr>';
+  charsets.forEach(([size,name]) => {
+    html += `<tr><td style="color:var(--text)">${name} (${size})</td>`;
+    lengths.forEach(l => {
+      const combos = Math.pow(size, l);
+      const t = combos / RATE;
+      html += `<td class="${timeClass(t)}">${humanTime(t)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('complexity-table').innerHTML = html;
+}
+
+function calcComplexity() {
+  const size = parseInt(document.getElementById('calc-charset').value);
+  const len  = parseInt(document.getElementById('calc-length').value);
+  const speed = parseInt(document.getElementById('calc-speed').value);
+  const combos = Math.pow(size, len);
+  const worstSecs = combos / speed;
+  const avgSecs = worstSecs / 2;
+
+  const el = document.getElementById('calc-results');
+  el.innerHTML = `
+    <div class="stat-card card"><div class="stat-val" style="font-size:16px">${combos > 1e15 ? combos.toExponential(2) : combos.toLocaleString()}</div><div class="stat-label">Search Space</div></div>
+    <div class="stat-card card"><div class="stat-val" style="font-size:16px">${humanTime(worstSecs)}</div><div class="stat-label">Worst Case</div></div>
+    <div class="stat-card card"><div class="stat-val" style="font-size:16px">${humanTime(avgSecs)}</div><div class="stat-label">Average Case</div></div>
+    <div class="stat-card card"><div class="stat-val" style="font-size:16px">${Math.round(Math.log2(combos))} bits</div><div class="stat-label">Entropy</div></div>`;
+}
+
+// ── Strength Meter ─────────────────────────────────────────────────────────
+function analyseStrength() {
+  const pwd = document.getElementById('str-input').value;
+  if (!pwd) {
+    document.getElementById('str-checks').innerHTML = '';
+    document.getElementById('str-cracktime').innerHTML = 'Enter a password above...';
+    document.getElementById('entropy-display').innerHTML = 'Enter a password to see entropy breakdown...';
+    document.getElementById('str-label').textContent = '';
+    for (let i=1;i<=5;i++) { const b=document.getElementById('sb'+i); b.className='s-bar'; }
+    return;
+  }
+
+  const checks = [
+    { label: 'Length ≥ 8',   ok: pwd.length >= 8 },
+    { label: 'Length ≥ 12',  ok: pwd.length >= 12 },
+    { label: 'Uppercase A-Z',ok: /[A-Z]/.test(pwd) },
+    { label: 'Lowercase a-z',ok: /[a-z]/.test(pwd) },
+    { label: 'Digits 0-9',   ok: /[0-9]/.test(pwd) },
+    { label: 'Symbols !@#$', ok: /[^a-zA-Z0-9]/.test(pwd) },
+    { label: 'Not common password', ok: !WORDLIST.includes(pwd.toLowerCase()) },
+    { label: 'No sequential repeats (aaa)', ok: !/(.)\1\1/.test(pwd) },
+  ];
+
+  let score = checks.filter(c=>c.ok).length;
+  const LEVELS = ['VERY WEAK','WEAK','FAIR','GOOD','STRONG','VERY STRONG'];
+  const COLORS = ['var(--red)','var(--accent2)','var(--warn)','#88ff44','var(--accent3)','var(--accent)'];
+  const lvl = Math.min(Math.floor(score/8*5), 5);
+  const levelName = LEVELS[lvl];
+  const levelColor = COLORS[lvl];
+
+  document.getElementById('str-label').textContent = levelName;
+  document.getElementById('str-label').style.color = levelColor;
+
+  for (let i=1;i<=5;i++) {
+    const b = document.getElementById('sb'+i);
+    b.className = 's-bar' + (i <= lvl+1 ? ' s'+Math.min(i,lvl+1) : '');
+  }
+
+  document.getElementById('str-checks').innerHTML = checks.map(c =>
+    `<span style="color:${c.ok?'var(--accent3)':'var(--red)'}">${c.ok?'✓':'✗'}</span> <span style="color:${c.ok?'var(--text)':'var(--muted)'}">${c.label}</span><br>`
+  ).join('');
+
+  // Entropy calculation
+  let charspaceSize = 0;
+  if (/[a-z]/.test(pwd)) charspaceSize += 26;
+  if (/[A-Z]/.test(pwd)) charspaceSize += 26;
+  if (/[0-9]/.test(pwd)) charspaceSize += 10;
+  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pwd)) charspaceSize += 32;
+  if (charspaceSize === 0) charspaceSize = 26;
+  const entropy = Math.floor(pwd.length * Math.log2(charspaceSize));
+
+  // Crack time estimates
+  const RATES = [
+    ['Offline (slow hash, bcrypt)', 1e4],
+    ['Offline (SHA-256, CPU)', 1e6],
+    ['Offline (SHA-256, GPU)', 1e9],
+    ['Offline (SHA-256, cluster)', 1e12],
+  ];
+  const combos = Math.pow(charspaceSize, pwd.length);
+
+  document.getElementById('str-cracktime').innerHTML = RATES.map(([label, rate]) => {
+    const t = combos / rate / 2;
+    return `<span style="color:var(--muted)">${label}:</span> <span style="color:${t>31536000?'var(--accent3)':t>3600?'var(--warn)':'var(--red)'}">${humanTime(t)}</span>`;
+  }).join('<br>');
+
+  document.getElementById('entropy-display').innerHTML = `
+    <div class="hash-row"><div class="hash-algo">Length</div><div class="hash-val">${pwd.length} characters</div></div>
+    <div class="hash-row"><div class="hash-algo">Charset</div><div class="hash-val">${charspaceSize} unique characters</div></div>
+    <div class="hash-row"><div class="hash-algo">Entropy</div><div class="hash-val" style="color:var(--accent3)">${entropy} bits</div></div>
+    <div class="hash-row"><div class="hash-algo">Space</div><div class="hash-val">${combos > 1e20 ? combos.toExponential(2) : combos.toLocaleString()} combinations</div></div>
+    <div class="hash-row"><div class="hash-algo">Score</div><div class="hash-val" style="color:${levelColor}">${score}/8 checks — ${levelName}</div></div>
+    <div style="margin-top:16px;font-size:11px;color:var(--muted);line-height:1.8">
+      <span style="color:var(--accent)">FORMULA:</span> entropy = n × log₂(|Σ|)<br>
+      = ${pwd.length} × log₂(${charspaceSize})<br>
+      = ${pwd.length} × ${Math.log2(charspaceSize).toFixed(2)}<br>
+      = ${entropy} bits
+    </div>`;
+}
+
+// Init complexity on load
+buildComplexityTable();
+calcComplexity();
+computeHashes();
+colDemo();
+</script>
+</body>
+</html>
